@@ -1,14 +1,16 @@
 import tensorflow as tf
 import numpy as np
-import cPickle
+import pickle as cPickle
 import ipdb
 class Detector():
     def __init__(self, weight_file_path, n_labels):
         self.image_mean = [103.939, 116.779, 123.68]
         self.n_labels = n_labels
 
-        with open(weight_file_path) as f:
-            self.pretrained_weights = cPickle.load(f)
+        with open(weight_file_path,'rb') as f:
+            temp_weights = cPickle._Unpickler(f)
+            temp_weights.encoding = 'latin1'
+            self.pretrained_weights = temp_weights.load()
 
     def get_weight( self, layer_name):
         layer = self.pretrained_weights[layer_name]
@@ -110,13 +112,13 @@ class Detector():
 
     def inference( self, rgb, train=False ):
         rgb *= 255.
-        r, g, b = tf.split(3, 3, rgb)
-        bgr = tf.concat(3,
+        r, g, b = tf.split(rgb, 3, 3)
+        bgr = tf.concat(
             [
                 b-self.image_mean[0],
                 g-self.image_mean[1],
                 r-self.image_mean[2]
-            ])
+            ], 3)
 
         relu1_1 = self.conv_layer( bgr, "conv1_1" )
         relu1_2 = self.conv_layer( relu1_1, "conv1_2" )

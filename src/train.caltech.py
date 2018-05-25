@@ -16,7 +16,7 @@ weight_decay_rate = 0.0005
 momentum = 0.9
 batch_size = 60
 
-dataset_path = '/media/storage3/Study/data/256_ObjectCategories'
+dataset_path = '/content/drive/256_ObjectCategories'
 
 caltech_path = '../data/caltech'
 trainset_path = '../data/caltech/train.pickle'
@@ -28,17 +28,17 @@ if not os.path.exists( trainset_path ):
         os.makedirs( caltech_path )
     image_dir_list = os.listdir( dataset_path )
 
-    label_pairs = map(lambda x: x.split('.'), image_dir_list)
-    labels, label_names = zip(*label_pairs)
-    labels = map(lambda x: int(x), labels)
+    label_pairs = [x.split('.') for x in image_dir_list]
+    labels, label_names = list(zip(*label_pairs))
+    labels = [int(x) for x in labels]
 
     label_dict = pd.Series( labels, index=label_names )
     label_dict -= 1
     n_labels = len( label_dict )
 
-    image_paths_per_label = map(lambda one_dir: map(lambda one_file: os.path.join( dataset_path, one_dir, one_file ), os.listdir( os.path.join( dataset_path, one_dir))), image_dir_list)
-    image_paths_train = np.hstack(map(lambda one_class: one_class[:-10], image_paths_per_label))
-    image_paths_test = np.hstack(map(lambda one_class: one_class[-10:], image_paths_per_label))
+    image_paths_per_label = [[os.path.join( dataset_path, one_dir, one_file ) for one_file in os.listdir( os.path.join( dataset_path, one_dir))] for one_dir in image_dir_list]
+    image_paths_train = np.hstack([one_class[:-10] for one_class in image_paths_per_label])
+    image_paths_test = np.hstack([one_class[-10:] for one_class in image_paths_per_label])
 
     trainset = pd.DataFrame({'image_path': image_paths_train})
     testset  = pd.DataFrame({'image_path': image_paths_test })
@@ -67,10 +67,10 @@ labels_tf = tf.placeholder( tf.int64, [None], name='labels')
 detector = Detector(weight_path, n_labels)
 
 p1,p2,p3,p4,conv5, conv6, gap, output = detector.inference(images_tf)
-loss_tf = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits( output, labels_tf ))
+loss_tf = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits( logits = output, labels = labels_tf ))
 
-weights_only = filter( lambda x: x.name.endswith('W:0'), tf.trainable_variables() )
-weight_decay = tf.reduce_sum(tf.pack([tf.nn.l2_loss(x) for x in weights_only])) * weight_decay_rate
+weights_only = [x for x in tf.trainable_variables() if x.name.endswith('W:0')]
+weight_decay = tf.reduce_sum(tf.stack([tf.nn.l2_loss(x) for x in weights_only])) * weight_decay_rate
 loss_tf += weight_decay
 
 sess = tf.InteractiveSession()
@@ -78,16 +78,16 @@ saver = tf.train.Saver( max_to_keep=50 )
 
 optimizer = tf.train.MomentumOptimizer( learning_rate, momentum )
 grads_and_vars = optimizer.compute_gradients( loss_tf )
-grads_and_vars = map(lambda gv: (gv[0], gv[1]) if ('conv6' in gv[1].name or 'GAP' in gv[1].name) else (gv[0]*0.1, gv[1]), grads_and_vars)
+grads_and_vars = [(gv[0], gv[1]) if ('conv6' in gv[1].name or 'GAP' in gv[1].name) else (gv[0]*0.1, gv[1]) for gv in grads_and_vars]
 #grads_and_vars = [(tf.clip_by_value(gv[0], -5., 5.), gv[1]) for gv in grads_and_vars]
 train_op = optimizer.apply_gradients( grads_and_vars )
 tf.initialize_all_variables().run()
 
 if pretrained_model_path:
-    print "Pretrained"
+    print("Pretrained")
     saver.restore(sess, pretrained_model_path)
 
-testset.index  = range( len(testset) )
+testset.index  = list(range( len(testset)))
 #testset = testset.ix[np.random.permutation( len(testset) )]#[:1000]
 #trainset2 = testset[1000:]
 #testset = testset[:1000]
@@ -101,18 +101,18 @@ iterations = 0
 loss_list = []
 for epoch in range(n_epochs):
 
-    trainset.index = range( len(trainset) )
+    trainset.index = list(range( len(trainset)))
     trainset = trainset.ix[ np.random.permutation( len(trainset) )]
 
     for start, end in zip(
-        range( 0, len(trainset)+batch_size, batch_size),
-        range(batch_size, len(trainset)+batch_size, batch_size)):
+        list(range( 0, len(trainset)+batch_size, batch_size)),
+        list(range(batch_size, len(trainset)+batch_size, batch_size))):
 
         current_data = trainset[start:end]
         current_image_paths = current_data['image_path'].values
-        current_images = np.array(map(lambda x: load_image(x), current_image_paths))
+        current_images = np.array([load_image(x) for x in current_image_paths])
 
-        good_index = np.array(map(lambda x: x is not None, current_images))
+        good_index = np.array([x is not None for x in current_images])
 
         current_data = current_data[good_index]
         current_images = np.stack(current_images[good_index])
@@ -130,29 +130,29 @@ for epoch in range(n_epochs):
 
         iterations += 1
         if iterations % 5 == 0:
-            print "======================================"
-            print "Epoch", epoch, "Iteration", iterations
-            print "Processed", start, '/', len(trainset)
+            print("======================================")
+            print("Epoch", epoch, "Iteration", iterations)
+            print("Processed", start, '/', len(trainset))
 
             label_predictions = output_val.argmax(axis=1)
             acc = (label_predictions == current_labels).sum()
 
-            print "Accuracy:", acc, '/', len(current_labels)
-            print "Training Loss:", np.mean(loss_list)
-            print "\n"
+            print("Accuracy:", acc, '/', len(current_labels))
+            print("Training Loss:", np.mean(loss_list))
+            print("\n")
             loss_list = []
 
     n_correct = 0
     n_data = 0
     for start, end in zip(
-            range(0, len(testset)+batch_size, batch_size),
-            range(batch_size, len(testset)+batch_size, batch_size)
+            list(range(0, len(testset)+batch_size, batch_size)),
+            list(range(batch_size, len(testset)+batch_size, batch_size))
             ):
         current_data = testset[start:end]
         current_image_paths = current_data['image_path'].values
-        current_images = np.array(map(lambda x: load_image(x), current_image_paths))
+        current_images = np.array([load_image(x) for x in current_image_paths])
 
-        good_index = np.array(map(lambda x: x is not None, current_images))
+        good_index = np.array([x is not None for x in current_images])
 
         current_data = current_data[good_index]
         current_images = np.stack(current_images[good_index])
@@ -170,9 +170,9 @@ for epoch in range(n_epochs):
 
     acc_all = n_correct / float(n_data)
     f_log.write('epoch:'+str(epoch)+'\tacc:'+str(acc_all) + '\n')
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print 'epoch:'+str(epoch)+'\tacc:'+str(acc_all) + '\n'
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+    print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+    print('epoch:'+str(epoch)+'\tacc:'+str(acc_all) + '\n')
+    print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
     saver.save( sess, os.path.join( model_path, 'model'), global_step=epoch)
 
