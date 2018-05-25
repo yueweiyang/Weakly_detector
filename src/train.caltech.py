@@ -7,6 +7,7 @@ from util import load_image
 import os
 import ipdb
 
+print("Start here")
 weight_path = '/content/drive/syndata_pfister_project/data/caffe_layers_value.pickle'
 model_path = '../models/caltech256/'
 pretrained_model_path = None #'../models/caltech256/model-0'
