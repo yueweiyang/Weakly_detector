@@ -99,6 +99,7 @@ f_log = open('../results/log.caltech256.txt', 'w')
 
 iterations = 0
 loss_list = []
+print('Start training')
 for epoch in range(n_epochs):
 
     trainset.index = list(range( len(trainset)))
