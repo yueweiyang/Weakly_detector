@@ -7,7 +7,8 @@ from util import load_image
 import os
 import ipdb
 
-weight_path = '../data/caffe_layers_value.pickle'
+print("Start here")
+weight_path = '/content/drive/syndata_pfister_project/data/caffe_layers_value.pickle'
 model_path = '../models/caltech256/'
 pretrained_model_path = None #'../models/caltech256/model-0'
 n_epochs = 10000
@@ -99,6 +100,7 @@ f_log = open('../results/log.caltech256.txt', 'w')
 
 iterations = 0
 loss_list = []
+print('Start training')
 for epoch in range(n_epochs):
 
     trainset.index = list(range( len(trainset)))
