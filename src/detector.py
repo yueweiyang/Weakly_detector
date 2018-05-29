@@ -161,10 +161,11 @@ class Detector():
         return pool1, pool2, pool3, pool4, relu5_3, conv6, gap, output
 
     def get_classmap(self, label, conv6):
+        n_labels = len(label)
         conv6_resized = tf.image.resize_bilinear( conv6, [224, 224] )
         with tf.variable_scope("GAP", reuse=True):
             label_w = tf.gather(tf.transpose(tf.get_variable("W")), label)
-            label_w = tf.reshape( label_w, [-1, 1024, 1] ) # [batch_size, 1024, 1]
+            label_w = tf.reshape( label_w, [-1, 1024, n_labels] ) # [batch_size, 1024, 1]
 
         conv6_resized = tf.reshape(conv6_resized, [-1, 224*224, 1024]) # [batch_size, 224*224, 1024]
 
