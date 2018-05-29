@@ -168,7 +168,7 @@ class Detector():
 
         conv6_resized = tf.reshape(conv6_resized, [-1, 224*224, 1024]) # [batch_size, 224*224, 1024]
 
-        classmap = tf.batch_matmul( conv6_resized, label_w )
+        classmap = tf.matmul( conv6_resized, label_w )
         classmap = tf.reshape( classmap, [-1, 224,224] )
         return classmap
 
